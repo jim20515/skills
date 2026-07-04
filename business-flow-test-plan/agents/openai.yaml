@@ -1,0 +1,4 @@
+interface:
+  display_name: "業務流程測試表產生器"
+  short_description: "產生人看得懂的業務流程 QA Excel"
+  default_prompt: "使用 $business-flow-test-plan 為這個專案建立一份完整、人看得懂、可實際驗收的業務流程測試 Excel。"
