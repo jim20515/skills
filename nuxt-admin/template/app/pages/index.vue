@@ -67,12 +67,47 @@ async function refresh() {
 }
 usePullToRefresh(refresh)
 
-const showSheet = ref(false)
 const money = (v: number) => v.toLocaleString('zh-TW')
 
+// 新增 / 編輯共用同一個 BottomSheet：editing=null 為新增、有值為編輯。
+// 慣例：清單「整列點擊即編輯」，不做「編輯」按鈕或操作欄；刪除收進編輯彈窗內。
+const showSheet = ref(false)
+const editing = ref<Item | null>(null)
+const form = reactive({ name: '', status: statuses[0]!, amount: '' })
+
+function openCreate() {
+  editing.value = null
+  form.name = ''
+  form.status = statuses[0]!
+  form.amount = ''
+  showSheet.value = true
+}
+function openEdit(it: Item) {
+  editing.value = it
+  form.name = it.name
+  form.status = it.status
+  form.amount = String(it.amount)
+  showSheet.value = true
+}
 function save() {
+  // 實際專案改成 $authFetch POST/PUT，完成後呼叫 refresh()
+  const amount = Number(form.amount.replace(/,/g, '')) || 0
+  if (editing.value) {
+    Object.assign(editing.value, { name: form.name, status: form.status, amount })
+    toast.success('已更新')
+  }
+  else {
+    items.value.unshift({ id: Date.now(), name: form.name, status: form.status, amount })
+    toast.success('已新增')
+  }
   showSheet.value = false
-  toast.success('已新增')
+}
+function remove() {
+  if (!editing.value)
+    return
+  items.value = items.value.filter(i => i.id !== editing.value!.id)
+  showSheet.value = false
+  toast.success('已刪除')
 }
 </script>
 
@@ -115,7 +150,7 @@ function save() {
           </button>
           <button
             class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition"
-            @click="showSheet = true">
+            @click="openCreate">
             新增
           </button>
         </div>
@@ -147,27 +182,45 @@ function save() {
                 <SortableTh label="名稱" column-key="name" :active-key="sortKey" :dir="sortDir" @sort="toggleSort" />
                 <SortableTh label="狀態" column-key="status" align="center" :active-key="sortKey" :dir="sortDir" @sort="toggleSort" />
                 <SortableTh label="金額" column-key="amount" align="right" :active-key="sortKey" :dir="sortDir" @sort="toggleSort" />
+                <th class="text-center px-4 py-3 text-xs font-medium text-slate-500">操作</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-50">
-              <tr v-for="it in rows" :key="it.id" class="hover:bg-slate-50/50 transition">
+              <!-- 整列可點＝編輯；列尾另放顯式「編輯」鈕（怕使用者不知道），@click.stop 才不會重複觸發 -->
+              <tr v-for="it in rows" :key="it.id" class="hover:bg-slate-50/50 transition cursor-pointer" @click="openEdit(it)">
                 <td class="px-5 py-3.5 font-medium text-slate-800">{{ it.name }}</td>
                 <td class="px-4 py-3.5 text-center">
                   <span class="inline-flex px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-600">{{ it.status }}</span>
                 </td>
                 <td class="px-5 py-3.5 text-right text-slate-700">{{ money(it.amount) }}</td>
+                <td class="px-4 py-3.5 text-center">
+                  <button title="編輯" class="p-1.5 rounded-lg text-slate-400 hover:bg-indigo-50 hover:text-indigo-500 transition" @click.stop="openEdit(it)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
-        <!-- 手機卡片（吃同一份 rows） -->
+        <!-- 手機卡片（吃同一份 rows；整張卡可點＝編輯，右側另放編輯鈕） -->
         <div class="sm:hidden divide-y divide-slate-100">
-          <div v-for="it in rows" :key="it.id" class="p-4 flex items-center justify-between gap-3">
+          <div v-for="it in rows" :key="it.id" class="p-4 flex items-center justify-between gap-3 active:bg-slate-50 transition cursor-pointer" @click="openEdit(it)">
             <div class="min-w-0">
               <p class="font-medium text-slate-800">{{ it.name }}</p>
               <p class="text-xs text-slate-400">{{ it.status }}</p>
             </div>
-            <p class="text-slate-700 shrink-0">{{ money(it.amount) }}</p>
+            <div class="flex items-center gap-2 shrink-0">
+              <p class="text-slate-700">{{ money(it.amount) }}</p>
+              <button title="編輯" class="p-1.5 -mr-1 rounded-lg text-slate-400 hover:bg-indigo-50 hover:text-indigo-500 transition" @click.stop="openEdit(it)">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -178,15 +231,36 @@ function save() {
       </DataState>
     </div>
 
-    <!-- 新增 BottomSheet -->
-    <BottomSheet v-model="showSheet" title="新增項目">
+    <!-- 新增 / 編輯 共用 BottomSheet：打開即可編輯，底部固定一顆儲存；刪除收在裡面 -->
+    <BottomSheet v-model="showSheet" :title="editing ? '編輯項目' : '新增項目'">
       <div class="p-6 space-y-4">
         <div>
           <label class="block text-xs font-medium text-slate-600 mb-1.5">名稱</label>
           <input
-            type="text" placeholder="輸入名稱…"
+            v-model="form.name" type="text" placeholder="輸入名稱…"
             class="w-full px-3 py-2 text-base sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300">
         </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1.5">狀態</label>
+          <select
+            v-model="form.status"
+            class="w-full px-3 py-2 text-base sm:text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300">
+            <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1.5">金額</label>
+          <input
+            v-model="form.amount" type="text" inputmode="numeric" placeholder="0"
+            class="w-full px-3 py-2 text-base sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300">
+        </div>
+        <!-- 破壞性動作放編輯彈窗內（不放列上），次要樣式 -->
+        <button
+          v-if="editing" type="button"
+          class="w-full px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition"
+          @click="remove">
+          刪除此項目
+        </button>
       </div>
       <template #footer>
         <div class="flex gap-3 px-6 py-4">
@@ -196,7 +270,7 @@ function save() {
             取消
           </button>
           <button
-            class="flex-1 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition"
+            class="flex-[2] px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition"
             @click="save">
             儲存
           </button>

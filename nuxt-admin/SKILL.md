@@ -88,6 +88,12 @@ bootstrap（A）時，**用 Write 把下面這段整段寫成專案根目錄的 
 - **外殼已響應式**：sidebar 手機為抽屜 + 漢堡、`md:ml-60`、`p-4 md:p-6`，沿用即可。
 - **每個 `<table>` 都必須有手機卡片版**（含彈窗內表格，唯一例外：純 2 欄 label｜value 窄表）：桌機 `<div class="hidden sm:block overflow-x-auto"><table>…`；手機另做 `sm:hidden` 堆疊卡片（用**同一份** computed 資料與 helper），分頁放捲動容器外。
   - `overflow-x-auto` 只是桌機保險——手機出現左右捲動＝漏做卡片。改動任何表格後，逐一確認每個 `<table>` 都有對應 `sm:hidden` 卡片。
+- **列＝點擊即編輯，且列尾放顯式「編輯」按鈕**：清單每一列（桌機 `<tr>` 與手機卡片）**整列可點、點擊開啟該筆編輯**（`<BottomSheet>` 裝可編輯表單，打開即可改、**底部 `#footer` 固定一顆「儲存」**）；列加 `cursor-pointer` 與 hover/active 底色。**同時**在列尾放一顆「編輯」小圖示按鈕（桌機「操作」欄、手機卡片右側），讓使用者**一眼知道可編輯**（別只靠整列可點，怕使用者不知道）。
+  - 列尾按鈕（編輯、刪除、其他快速動作）一律加 **`@click.stop`**，才不會冒泡去觸發整列的編輯——如此「整列可點」與「列上功能鈕」可並存。編輯鈕呼叫同一個開啟函式（如 `openEdit(row)`）。
+  - **破壞性動作（刪除）**：可放列尾（需 `@click.stop` + 二次確認），或收進編輯彈窗內；擇一即可、別重複。
+  - **新增**用列表卡 header 的「新增」鈕，開**同一個** BottomSheet（`editing` 為 null＝新增、有值＝編輯；標題與行為據此切換）。
+  - 表單欄位直接可編輯（不做「檢視/編輯」切換）；同一顆儲存一次送出（部分更新見「資料存取」）。
+  - **例外**：當**每列權限不同**（同一份清單裡部分列可編輯、部分對目前使用者唯讀，例：業務只能改自己建立的）時，改用**只在可管理的列顯示的顯式「編輯/刪除」按鈕**、此時**列不整列可點**——避免使用者點了唯讀列卻沒反應。
 - **每個清單表格都要「搜尋 + 排序 + 分頁」三件套**（例外：純 2 欄窄表、或筆數天生極少固定）。用 `useDataTable` 串成**單一資料管線**：`原始 → 篩選/搜尋 → 排序 → 分頁`，桌機表格與手機卡片**吃同一份 `rows`**（回傳的當頁資料）。
   - **API**：`useDataTable<T>(source, { searchKeys, filter, sortAccessors, defaultSort, pageSize })` → 回傳 `{ search, sortKey, sortDir, toggleSort, rows, page, pageCount, total, filteredTotal, rangeStart, rangeEnd, setPage, prevPage, nextPage }`。
     - `searchKeys`：要做關鍵字搜尋的欄位；`filter`：進階篩選判斷式（用 `computed` 包篩選狀態，變動時自動回第 1 頁）；`sortAccessors`：欄位 key → 取值函式（日期轉時間戳、代碼轉排序序）；`defaultSort`：預設排序。
