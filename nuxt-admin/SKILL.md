@@ -103,6 +103,7 @@ bootstrap（A）時，**用 Write 把下面這段整段寫成專案根目錄的 
   - **排序**：桌機可排序 `<th>` 可點擊 + **▲▼** 指示（點擊循環 未→升→降）；手機另放排序下拉。預設排序明確（例：建立時間新到舊）。
   - **分頁**：預設每頁 10／20；分頁列放捲動容器外、顯示頁碼/總數 + 上下頁與邊界停用態。
   - **資料量大（>數百筆）改伺服器端**：搜尋/排序/頁碼當 query 傳給 API，Neon 端 `where`/`order by`/`limit offset`；小資料量客戶端即可，別過度設計。
+  - **記住上次搜尋條件**：清單頁把該頁的搜尋/篩選/排序 ref 交給 `usePersistentFilters('<清單>', { search, ...篩選ref, sortKey, sortDir })`，依「登入者 user id + 清單」存 localStorage，下次同一使用者進來自動還原（每位使用者各自獨立、換人登入互不干擾）。reactive 篩選物件用 `...toRefs(filters)` 攤開；不動 `useDataTable`。**別把分頁 `page` 交進去**（資料變動可能停在空白頁）。
 - **彈窗一律用 `<BottomSheet v-model>`**：手機從底部滑上（握把＋安全區＋鎖背景捲動），桌機置中淡入。`title`／`#header`／`#footer`／`max-width`／`persistent`。**不要手刻 `fixed inset-0` 彈窗**。
 - **App 化互動共用件，直接沿用勿重造**：
   - **Toast**：`const toast = useToast()` → `toast.success(...)`／`.error(...)`；**不要用 `alert`**。全域 host 掛在 layout。
@@ -155,5 +156,6 @@ bootstrap（A）時，**用 Write 把下面這段整段寫成專案根目錄的 
 - `app/utils/format.ts`：通用格式化 helper（`fmtDate` 日期時間、`fmtMoney` 千分位），全站單一來源、Nuxt 自動匯入。
 - Loading：`app/components/Spinner.vue`（size sm/md/lg）＋`DataState.vue`（載入/錯誤/空/內容四選一）＋`LoadingOverlay.vue`（登入導向全螢幕過場，複用 Spinner）。
 - `app/composables/useDataTable.ts`（搜尋 `searchKeys` + 進階 `filter` + `sortAccessors` 排序 + 分頁，回傳 `rows`）＋配套 `app/components/SortableTh.vue`（可點排序表頭，自帶 ▲▼）＋ `app/components/TablePagination.vue`（分頁列）；桌機表格與手機卡片共用 `rows`。完整範例見 `template/app/pages/index.vue`。
+- `app/composables/usePersistentFilters.ts`（記住清單「上次搜尋/篩選/排序」，依登入者 user id 存 localStorage、換人互不干擾；把該頁的搜尋/篩選/排序 ref 交進去即可，不動 `useDataTable`）。
 - **DB**：`server/utils/db.ts`（Neon 連線）+ `users` 表 schema。
 - **認證**：`app/composables/useAuth.ts`（token cookie）+ `app/composables/useAuthFetch.ts` + `app/plugins/authFetch.ts` + `server/utils/{auth,requireUser}.ts` + `server/api/auth/{login,register,me}`＋登入頁 `app/pages/login.vue`。
